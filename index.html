@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>H2K Anonymizer Web - StepWin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <link rel="stylesheet" type="text/css" media="screen" href="main.css" /> -->
+    <script src="jszip.min.js"></script>
+    <script src="saveas.js"></script>
+    <script src="cleaner.js"></script>
+    <style>
+        * {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgb(73, 121, 209);
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .innerContainer {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: rgba(0, 0, 0, 0.411);
+            color: wheat;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" ondrop="handleDrop(event);" ondragover="prevent(event);" ondrag="this.style.backgroundColor='choclate'">
+        <div class="innerContainer">
+            <p class="message">Drag and Drop your files here</p>
+            <a class="download"></a>
+        </div>
+    </div>
+    <script>
+        var parsed = [];
+        function prevent(ev) {
+            ev.preventDefault();
+        }
+
+        function handleDrop(ev) {
+            // Mostly copied from MDN
+            // Prevent default behavior (Prevent file from being opened)
+            ev.preventDefault();
+            var pack = false;
+
+            if (ev.dataTransfer.items) {
+                // Use DataTransferItemList interface to access the file(s)
+                for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                    // If dropped items aren't files, reject them
+                    if (ev.dataTransfer.items[i].kind === 'file') {
+                        var file = ev.dataTransfer.items[i].getAsFile();
+                        if (i === ev.dataTransfer.items.length-1) pack = true;
+                        readFile(file, pack); //clean and if needed pack the files 
+                    }
+                }
+            } else {
+                // Use DataTransfer interface to access the file(s)
+                for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                    var file = ev.dataTransfer.files[i]
+                    if (i === ev.dataTransfer.files.length-1) pack = true;
+                    readFile(file, pack); //clean and if needed pack the files
+                }
+            }
+        }
+        
+        function readFile(file, pack) { // clean the file, and if needed, pack them
+            let reader = new FileReader();
+            reader.onerror = function (err) {
+                console.log(err);
+            }
+            reader.onload = function (event) {
+                parsed.push( {
+                    name: 'a_' + file.name,
+                    content: cleanH2K(event.target.result, file.name)
+                } );
+                if (pack) packFiles();
+            };
+            reader.readAsText(file);
+        }
+
+        function packFiles() {
+            var zip = new JSZip();
+            parsed.forEach( function (p) {
+                zip.file( p.name, p.content )
+            })
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                // see FileSaver.js
+                saveAs(content, "anonymized.zip");
+            });
+            parsed = [];
+        }
+    </script>
+</body>
+</html>
