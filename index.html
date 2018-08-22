@@ -54,44 +54,46 @@
         function prevent(ev) {
             ev.preventDefault();
         }
+        var message_el = document.querySelector('p.message')
+        var file_count;
 
         function handleDrop(ev) {
             // Mostly copied from MDN
             // Prevent default behavior (Prevent file from being opened)
             ev.preventDefault();
-            var pack = false;
 
             if (ev.dataTransfer.items) {
+                file_count = ev.dataTransfer.items.length;
                 // Use DataTransferItemList interface to access the file(s)
-                for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                for (var i = 0; i < file_count; i++) {
                     // If dropped items aren't files, reject them
                     if (ev.dataTransfer.items[i].kind === 'file') {
                         var file = ev.dataTransfer.items[i].getAsFile();
-                        if (i === ev.dataTransfer.items.length-1) pack = true;
-                        readFile(file, pack); //clean and if needed pack the files 
+                        readFile(file); //clean and if needed pack the files 
                     }
                 }
             } else {
+                file_count = ev.dataTransfer.files.length
                 // Use DataTransfer interface to access the file(s)
-                for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                for (var i = 0; i < file_count; i++) {
                     var file = ev.dataTransfer.files[i]
-                    if (i === ev.dataTransfer.files.length-1) pack = true;
-                    readFile(file, pack); //clean and if needed pack the files
+                    readFile(file); //clean and if needed pack the files
                 }
             }
         }
         
-        function readFile(file, pack) { // clean the file, and if needed, pack them
+        function readFile(file) { // clean the file, and if needed, pack them
             let reader = new FileReader();
             reader.onerror = function (err) {
                 console.log(err);
             }
             reader.onload = function (event) {
-                parsed.push( {
+                parsed.push({
                     name: 'a_' + file.name,
                     content: cleanH2K(event.target.result, file.name)
-                } );
-                if (pack) packFiles();
+                });
+                message_el.innerHTML = 'Read ' + parsed.length + ' of ' + file_count + ' files'
+                if (file_count === parsed.length) packFiles();
             };
             reader.readAsText(file);
         }
@@ -104,8 +106,9 @@
             zip.generateAsync({type:"blob"}).then(function(content) {
                 // see FileSaver.js
                 saveAs(content, "anonymized.zip");
+                parsed = [];
+                message_el.innerHTML = 'Drag more files here'
             });
-            parsed = [];
         }
     </script>
 </body>
