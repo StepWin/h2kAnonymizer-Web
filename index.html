@@ -13,6 +13,7 @@
         * {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             box-sizing: border-box;
+            text-align: center;
         }
 
         html, body {
@@ -20,6 +21,10 @@
             width: 100%;
             height: 100%;
             background-color: rgb(73, 121, 209);
+        }
+
+        a, a:visited {
+            color: white;
         }
 
         .container {
@@ -31,6 +36,7 @@
         }
 
         .innerContainer {
+            max-width: 450px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -45,7 +51,17 @@
 <body>
     <div class="container" ondrop="handleDrop(event);" ondragover="prevent(event);" ondrag="this.style.backgroundColor='choclate'">
         <div class="innerContainer">
-            <p class="message">Drag and Drop your files here</p>
+            <h1>HOT2000 Anonymizer</h1>
+            <br>
+            <p class="message">Drag and Drop your files here.</p>
+            <br>
+            <br>
+            <p>For large number of files, a minimum of 2GB free RAM, and Chrome Browser are recommended. 
+                The processed files would be downloaded in multiple batches. 
+                You can use "Extract All" zip option to unzip them in one location.
+            </p>
+            <br>
+            <p>Published <a href="https://github.com/StepWin/h2kAnonymizer-Web">Open-Source</a>. File any <a href="https://github.com/StepWin/h2kAnonymizer-Web/issues">issues here.</a></p>
             <a class="download"></a>
         </div>
     </div>
@@ -94,14 +110,14 @@
 
         function batchFiles() { //splits the files and sends the first batch one-by-one to the 'readfile'
             var zip = new JSZip();
+            var progress = file_count - files.length;
             var batch = files.splice(0, batch_size);
-            message_el.innerHTML = 'Processing ' + (file_count - files.length) + ' of ' + file_count;
             batch.forEach( function (b) {
-                readFile(b, zip, batch.length)
+                readFile(b, zip, batch.length, progress);
             })
         }
         
-        function readFile(file, zip, batch_count) { // reads all the files in batch, once done, sends to 'packfiles'
+        function readFile(file, zip, batch_count, progress) { // reads all the files in batch, once done, sends to 'packfiles'
             let reader = new FileReader();
             reader.onerror = function (err) {
                 console.log(err);
@@ -109,12 +125,14 @@
             reader.onload = function (event) {
                 zip.file( 'a_' + file.name, cleanH2K(event.target.result, file.name) );
                 var processed = Object.keys(zip.files).length;
+                message_el.innerHTML = 'Processing ' + (progress + processed) + ' of ' + file_count + '...';
                 if ( processed === batch_count ) packFiles(zip, batch_count);
             };
             reader.readAsText(file);
         }
-
+        
         function packFiles(zip, batch_count) { //packs the files, once downloaded looks for the next batch
+            message_el.innerHTML = 'Packaging a batch...';
             zip.generateAsync({type:"blob"}).then(function(content) {
                 saveAs(content, "anonymized.zip");
                 if ( batch_count < batch_size) { //must be final
