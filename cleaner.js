@@ -6,7 +6,7 @@ function cleanH2K(xml, name) {
         return false;
     }
     
-    console.log(`Reading ${name}`);
+    // console.log(`Reading ${name}`);
     return anonymize(xml);
 }
 

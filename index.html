@@ -50,64 +50,77 @@
         </div>
     </div>
     <script>
-        var parsed = [];
+        var batch_size = 2000 //this can be tweaked
         function prevent(ev) {
             ev.preventDefault();
         }
-        var message_el = document.querySelector('p.message')
+        var message_el = document.querySelector('p.message');
+        var files = [];
         var file_count;
+        var processed = 0;
+        var lock = false;
 
         function handleDrop(ev) {
-            // Mostly copied from MDN
+            // Mostly copied from MDN, merges the two file reading APIs
             // Prevent default behavior (Prevent file from being opened)
             ev.preventDefault();
-
+            
+            if(lock) {
+                alert('please wait for the existing conversion to finish.')
+                return 
+            }
+            lock = true;
+            message_el.innerHTML = 'Processing...'
+            
             if (ev.dataTransfer.items) {
                 file_count = ev.dataTransfer.items.length;
-                // Use DataTransferItemList interface to access the file(s)
                 for (var i = 0; i < file_count; i++) {
-                    // If dropped items aren't files, reject them
                     if (ev.dataTransfer.items[i].kind === 'file') {
                         var file = ev.dataTransfer.items[i].getAsFile();
-                        readFile(file); //clean and if needed pack the files 
+                        files.push(file);
+                        if( i === file_count -1 ) batchFiles(); //start the first file batch
                     }
                 }
             } else {
                 file_count = ev.dataTransfer.files.length
-                // Use DataTransfer interface to access the file(s)
                 for (var i = 0; i < file_count; i++) {
                     var file = ev.dataTransfer.files[i]
-                    readFile(file); //clean and if needed pack the files
+                    files.push(file);
+                    if( i === file_count -1 ) batchFiles(); //start the first file batch
                 }
             }
         }
+
+
+        function batchFiles() { //splits the files and sends the first batch one-by-one to the 'readfile'
+            var zip = new JSZip();
+            var batch = files.splice(0, batch_size);
+            message_el.innerHTML = 'Processing ' + (file_count - files.length) + ' of ' + file_count;
+            batch.forEach( function (b) {
+                readFile(b, zip, batch.length)
+            })
+        }
         
-        function readFile(file) { // clean the file, and if needed, pack them
+        function readFile(file, zip, batch_count) { // reads all the files in batch, once done, sends to 'packfiles'
             let reader = new FileReader();
             reader.onerror = function (err) {
                 console.log(err);
             }
             reader.onload = function (event) {
-                parsed.push({
-                    name: 'a_' + file.name,
-                    content: cleanH2K(event.target.result, file.name)
-                });
-                message_el.innerHTML = 'Read ' + parsed.length + ' of ' + file_count + ' files'
-                if (file_count === parsed.length) packFiles();
+                zip.file( 'a_' + file.name, cleanH2K(event.target.result, file.name) );
+                var processed = Object.keys(zip.files).length;
+                if ( processed === batch_count ) packFiles(zip, batch_count);
             };
             reader.readAsText(file);
         }
 
-        function packFiles() {
-            var zip = new JSZip();
-            parsed.forEach( function (p) {
-                zip.file( p.name, p.content )
-            })
+        function packFiles(zip, batch_count) { //packs the files, once downloaded looks for the next batch
             zip.generateAsync({type:"blob"}).then(function(content) {
-                // see FileSaver.js
                 saveAs(content, "anonymized.zip");
-                parsed = [];
-                message_el.innerHTML = 'Drag more files here'
+                if ( batch_count < batch_size) { //must be final
+                    message_el.innerHTML = 'Drag more files here'
+                    lock = false;
+                } else batchFiles();
             });
         }
     </script>
